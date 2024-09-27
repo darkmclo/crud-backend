@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Exception;
@@ -12,18 +13,116 @@ class ClientController extends Controller
     private string $filename = 'clients.txt';
 
     public function read() {
+        $clients = Client::all();
+        return response()->json(['data' => $clients], 200);
+    }
+
+    public function get($id) {
+        try{
+            $item = Client::findOrFail($id);
+            if ($item == null) {
+                return response()->json([
+                    'error' => 'Invalid',
+                    'message' => 'Acceso denegado. No hay ningun registro con el ID proveido.',
+                ], 401);
+            }
+            // Se devuelve una respuesta exitosa.
+            return response()->json(['data' => $item], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Se maneja la excepción, con error de validación.
+            return response()->json(['error' => 'ValidationError', 'messages' => $e->errors()], 422);
+        } catch (Exception $e) {
+            // Se recibe cualquier otro tipo de excepción.
+            return response()->json(['error' => 'ApplicationError', 'message' => $e->getMessage()], 500);
+        }  
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            // Valida la información que es recibida
+            /*
+            $request->validate([
+                'ClientName' => 'required|string',
+                'quantity' => 'required|numeric',
+                'price' => 'required|numeric'
+            ]);
+            */
+            $validatedData = $request->validate([
+                'name' => 'required|string',
+                'rtn' => 'required|string',
+                'addr' => 'required|string'
+            ]);
+    
+            $client = Client::create($validatedData);
+
+            // Se devuelve una respuesta exitosa.
+            return response()->json(['message' => 'El contenido se ha guardado exitosamente.', 'item' => $client], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Se maneja la excepción, con error de validación.
+            return response()->json(['error' => 'ValidationError', 'messages' => $e->errors()], 422);
+        } catch (Exception $e) {
+            // Se recibe cualquier otro tipo de excepción.
+            return response()->json(['error' => 'ApplicationError', 'message' => $e->getMessage()], 500);
+        }  
+    }
+
+    public function update(Request $request, $id)
+    {
+        try {
+            // Valida la información que es recibida
+            $validatedData = $request->validate([
+                'id' => 'required|numeric',
+                'name' => 'required|string',
+                'rtn' => 'required|string',
+                'addr' => 'required|string'
+            ]);
+    
+            $client = Client::findOrFail($request->input('id'));
+            $client->update($validatedData);
+
+            return response()->json(['message' => 'Se actualizó exitosamente el registro con id: ' . $request->input('id')], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Se maneja la excepción, con error de validación.
+            return response()->json(['error' => 'ValidationError', 'messages' => $e->errors()], 422);
+        } catch (Exception $e) {
+            // Se recibe cualquier otro tipo de excepción.
+            return response()->json(['error' => 'ApplicationError', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function delete($id)
+    {
+        try {
+            $client = Client::findOrFail($id);
+            $client->delete();
+            
+            // Se devuelve una respuesta exitosa.
+            return response()->json(['message' => 'El contenido se ha borrado exitosamente.'], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Se maneja la excepción, con error de validación.
+            return response()->json(['error' => 'ValidationError', 'messages' => $e->errors()], 422);
+        } catch (Exception $e) {
+            // Se recibe cualquier otro tipo de excepción.
+            return response()->json(['error' => 'ApplicationError', 'message' => $e->getMessage()], 500);
+        }  
+    }
+
+    public function read_withfile() {
         $fPath = storage_path('app/data/'. $this->foldername .'/'. $this->filename .'');
 
         if (!File::exists($fPath)) {
             return response()->json(['message' => 'No se encontro el recurso necesario (.txt).'], 404);
         } else {
             $file_content = File::get($fPath);
-            $products = json_decode($file_content);
-            return response()->json(['data' => $products], 200);
+            $Clients = json_decode($file_content);
+            return response()->json(['data' => $Clients], 200);
         };
     }
 
-    public function get($id)
+    public function get_withfile($id)
     {
         try{
             $fPath = storage_path('app/data/'. $this->foldername .'/'. $this->filename .'');
@@ -57,7 +156,7 @@ class ClientController extends Controller
         }  
     }
 
-    public function store(Request $request)
+    public function store_withfile(Request $request)
     {
         try {
             $request->validate([
@@ -107,7 +206,7 @@ class ClientController extends Controller
         }  
     }
 
-    public function update(Request $request)
+    public function update_withfile(Request $request)
     {
         try {
             // Valida la información que es recibida
@@ -171,7 +270,7 @@ class ClientController extends Controller
         } 
     }
 
-    public function delete($id)
+    public function delete_withfile($id)
     {
         try {
             $fPath = storage_path('app/data/'. $this->foldername .'/'. $this->filename .'');
